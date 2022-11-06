@@ -493,6 +493,7 @@ SPACES_COMMENTS       (\s+|{COMMENT}\n\r?)+
 "."                      return '.'
 "OPTIONAL"               return 'OPTIONAL'
 "SERVICE"                return 'SERVICE'
+"QUERY"                  return 'QUERY'
 "BIND"                   return 'BIND'
 "UNDEF"                  return 'UNDEF'
 "MINUS"                  return 'MINUS'
@@ -763,37 +764,71 @@ LimitOffsetClauses
     | 'OFFSET' INTEGER 'LIMIT'  INTEGER -> { limit: toInt($4), offset: toInt($2) }
     ;
 ValuesClause
-    : 'VALUES' InlineData -> { type: 'values', values: $2 }
+    : 'VALUES' InlineData
+    {
+      if ($2.from) {
+        $$ = { type: 'values', from: $2.from, values: $2.values }
+      } else {
+        $$ = { type: 'values', values: $2 }
+      }
+    }
     ;
 InlineData
-    : VAR '{' DataBlockValue* '}'
+    : VAR DataBlockValueSource
     {
-      $$ = $3.map(function(v) { var o = {}; o[$1] = v; return o; })
+      if ($2.from) {
+        var value = {}
+        value[$1] = {}
+
+        $$ = {
+          from: $2.from,
+          values: [value]
+        }
+      } else {
+        $$ = $2.map(function(v) { var o = {}; o[$1] = v; return o; })
+      }
     }
     |
     NIL '{' NIL* '}'
     {
       $$ = $3.map(function() { return {}; })
     }
-    | '(' VAR+ ')' '{' DataBlockValueList* '}'
+    | '(' VAR+ ')' DataBlockValueListSource
     {
-      var length = $2.length;
-      $2 = $2.map(toVar);
-      $$ = $5.map(function (values) {
-        if (values.length !== length)
-          throw Error('Inconsistent VALUES length');
-        var valuesObject = {};
-        for(var i = 0; i<length; i++)
-          valuesObject['?' + $2[i].value] = values[i];
-        return valuesObject;
-      });
+      if ($4.from) {
+        var values = $2.map(function(v) { var o = {}; o[v] = {}; return o; })
+
+        $$ = {
+          from: $4.from,
+          values: values
+        }
+      } else {
+        var length = $2.length;
+        $2 = $2.map(toVar);
+        $$ = $4.map(function (values) {
+          if (values.length !== length)
+            throw Error('Inconsistent VALUES length');
+          var valuesObject = {};
+          for(var i = 0; i<length; i++)
+            valuesObject['?' + $2[i].value] = values[i];
+          return valuesObject;
+        });
+      }
     }
+    ;
+DataBlockValueSource
+    : '{' DataBlockValue* '}' -> $2
+    | 'FROM' VAR -> { from: toVar($2) }
     ;
 DataBlockValue
     : iri
     | Literal
     | ConstTriple -> ensureSparqlStar($1)
     | 'UNDEF' -> undefined
+    ;
+DataBlockValueListSource
+    : '{' DataBlockValueList* '}' -> $2
+    | 'FROM' VAR -> { from: toVar($2) }
     ;
 DataBlockValueList
     : '(' DataBlockValue+ ')' -> $2
@@ -894,6 +929,7 @@ GraphPatternNotTriples
     | 'FILTER' Constraint -> { type: 'filter', expression: $2 }
     | 'BIND' '(' Expression 'AS' VAR ')' -> { type: 'bind', variable: toVar($5), expression: $3 }
     | 'BIND' '(' VarTriple 'AS' VAR ')' -> ensureSparqlStar({ type: 'bind', variable: toVar($5), expression: $3 })
+    | 'QUERY' VAR GroupGraphPattern -> extend($3, { type: 'namedQuery', name: toVar($2) })
     | ValuesClause
     ;
 Constraint

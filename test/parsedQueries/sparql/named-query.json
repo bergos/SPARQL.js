@@ -1,0 +1,78 @@
+{
+  "queryType": "SELECT",
+  "variables": [
+    {
+      "termType": "Variable",
+      "value": "s"
+    },
+    {
+      "termType": "Variable",
+      "value": "o"
+    }
+  ],
+  "where": [
+    {
+      "type": "namedQuery",
+      "patterns": [
+        {
+          "type": "bgp",
+          "triples": [
+            {
+              "subject": {
+                "termType": "NamedNode",
+                "value": "http://example.org/a"
+              },
+              "predicate": {
+                "termType": "NamedNode",
+                "value": "http://example.org/b"
+              },
+              "object": {
+                "termType": "Variable",
+                "value": "o"
+              }
+            }
+          ]
+        }
+      ],
+      "name": {
+        "termType": "Variable",
+        "value": "q"
+      }
+    },
+    {
+      "type": "values",
+      "from": {
+        "termType": "Variable",
+        "value": "q"
+      },
+      "values": [
+        {
+          "?o": {}
+        }
+      ]
+    },
+    {
+      "type": "bgp",
+      "triples": [
+        {
+          "subject": {
+            "termType": "Variable",
+            "value": "s"
+          },
+          "predicate": {
+            "termType": "Variable",
+            "value": "p"
+          },
+          "object": {
+            "termType": "Variable",
+            "value": "o"
+          }
+        }
+      ]
+    }
+  ],
+  "type": "query",
+  "prefixes": {
+    "": "http://example.org/"
+  }
+}

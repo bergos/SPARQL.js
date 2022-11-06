@@ -1,0 +1,9 @@
+PREFIX : <http://example.org/>
+
+SELECT ?s ?o WHERE {
+  QUERY ?q { :a :b ?o }
+
+  VALUES ?o FROM ?q
+
+  ?s ?p ?o .
+}
